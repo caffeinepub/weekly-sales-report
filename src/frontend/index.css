@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans-Variable.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.375rem;
+
+    /* Light theme — clean white/green corporate palette */
+    --background: 0.98 0.002 145;
+    --foreground: 0.18 0.012 145;
+    --card: 1.00 0 0;
+    --card-foreground: 0.18 0.012 145;
+    --popover: 1.00 0 0;
+    --popover-foreground: 0.18 0.012 145;
+    --primary: 0.52 0.14 155;
+    --primary-foreground: 1.00 0 0;
+    --secondary: 0.94 0.008 145;
+    --secondary-foreground: 0.28 0.012 145;
+    --muted: 0.95 0.005 145;
+    --muted-foreground: 0.50 0.012 145;
+    --accent: 0.94 0.010 155;
+    --accent-foreground: 0.20 0.014 155;
+    --destructive: 0.56 0.22 25;
+    --destructive-foreground: 1.00 0 0;
+    --border: 0.88 0.010 145;
+    --input: 0.90 0.008 145;
+    --ring: 0.52 0.14 155;
+
+    /* Status group colors — light mode variants */
+    --status-new: 0.52 0.16 250;
+    --status-new-bg: 0.94 0.04 250;
+    --status-new-fg: 0.28 0.10 250;
+
+    --status-inprogress: 0.64 0.16 68;
+    --status-inprogress-bg: 0.96 0.04 68;
+    --status-inprogress-fg: 0.34 0.10 68;
+
+    --status-closed-won: 0.52 0.14 155;
+    --status-closed-won-bg: 0.94 0.04 155;
+    --status-closed-won-fg: 0.26 0.08 155;
+
+    --status-closed-lost: 0.52 0.20 25;
+    --status-closed-lost-bg: 0.96 0.04 25;
+    --status-closed-lost-fg: 0.32 0.12 25;
+
+    --status-closed-other: 0.50 0.010 145;
+    --status-closed-other-bg: 0.94 0.005 145;
+    --status-closed-other-fg: 0.28 0.008 145;
+
+    /* Chart colors */
+    --chart-1: 0.52 0.14 155;
+    --chart-2: 0.52 0.16 250;
+    --chart-3: 0.64 0.16 68;
+    --chart-4: 0.52 0.20 25;
+    --chart-5: 0.58 0.14 300;
+
+    --sidebar: 0.97 0.005 145;
+    --sidebar-foreground: 0.18 0.012 145;
+    --sidebar-primary: 0.52 0.14 155;
+    --sidebar-primary-foreground: 1.00 0 0;
+    --sidebar-accent: 0.94 0.010 155;
+    --sidebar-accent-foreground: 0.20 0.014 155;
+    --sidebar-border: 0.88 0.010 145;
+    --sidebar-ring: 0.52 0.14 155;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01" 1, "ss02" 1;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* Section heading with left border accent */
+  .heading-accent {
+    border-left: 4px solid oklch(var(--primary));
+    padding-left: 0.75rem;
+  }
+
+  /* Status group utility classes */
+  .status-new {
+    background-color: oklch(var(--status-new-bg));
+    color: oklch(var(--status-new-fg));
+    border: 1px solid oklch(var(--status-new) / 0.30);
+  }
+  .status-inprogress {
+    background-color: oklch(var(--status-inprogress-bg));
+    color: oklch(var(--status-inprogress-fg));
+    border: 1px solid oklch(var(--status-inprogress) / 0.30);
+  }
+  .status-closed-won {
+    background-color: oklch(var(--status-closed-won-bg));
+    color: oklch(var(--status-closed-won-fg));
+    border: 1px solid oklch(var(--status-closed-won) / 0.30);
+  }
+  .status-closed-lost {
+    background-color: oklch(var(--status-closed-lost-bg));
+    color: oklch(var(--status-closed-lost-fg));
+    border: 1px solid oklch(var(--status-closed-lost) / 0.30);
+  }
+  .status-closed-other {
+    background-color: oklch(var(--status-closed-other-bg));
+    color: oklch(var(--status-closed-other-fg));
+    border: 1px solid oklch(var(--status-closed-other) / 0.30);
+  }
+  .status-dot-new {
+    background-color: oklch(var(--status-new));
+  }
+  .status-dot-inprogress {
+    background-color: oklch(var(--status-inprogress));
+  }
+  .status-dot-closed-won {
+    background-color: oklch(var(--status-closed-won));
+  }
+  .status-dot-closed-lost {
+    background-color: oklch(var(--status-closed-lost));
+  }
+  .status-dot-closed-other {
+    background-color: oklch(var(--status-closed-other));
+  }
+
+  .card-hover {
+    transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .card-hover:hover {
+    border-color: oklch(var(--primary) / 0.3);
+    box-shadow: 0 2px 8px oklch(var(--primary) / 0.10);
+  }
+  .glow-primary {
+    box-shadow: 0 2px 12px oklch(var(--primary) / 0.18);
+  }
+  .animate-pulse-ring {
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
