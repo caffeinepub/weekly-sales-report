@@ -21,6 +21,7 @@ export type UserEntry = {
   principal: string;
   permissions: UserPermissions;
   addedAt: number;
+  displayName?: string;
 };
 
 const ADMIN_KEY = "salespulse_admin_principal";
@@ -72,6 +73,7 @@ type RBACContextType = {
   isAdmin: (principal: string) => boolean;
   getAllUsers: () => UserEntry[];
   setUserPermissions: (principal: string, permissions: UserPermissions) => void;
+  setUserDisplayName: (principal: string, displayName: string) => void;
   adminPrincipal: string | null;
 };
 
@@ -147,6 +149,19 @@ export function RBACProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const setUserDisplayName = useCallback(
+    (principal: string, displayName: string) => {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.principal === principal
+            ? { ...u, displayName: displayName.trim() }
+            : u,
+        ),
+      );
+    },
+    [],
+  );
+
   const value = useMemo<RBACContextType>(
     () => ({
       registerUser,
@@ -154,6 +169,7 @@ export function RBACProvider({ children }: { children: ReactNode }) {
       isAdmin: isAdminFn,
       getAllUsers,
       setUserPermissions,
+      setUserDisplayName,
       adminPrincipal,
     }),
     [
@@ -162,6 +178,7 @@ export function RBACProvider({ children }: { children: ReactNode }) {
       isAdminFn,
       getAllUsers,
       setUserPermissions,
+      setUserDisplayName,
       adminPrincipal,
     ],
   );

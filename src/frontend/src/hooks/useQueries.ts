@@ -16,6 +16,7 @@ export function useDashboardStats() {
       return result;
     },
     enabled: !!actor && !isFetching,
+    placeholderData: computeMockDashboardStats(),
     refetchInterval: 8000,
   });
 }
@@ -33,6 +34,7 @@ export function useEntries() {
       return result;
     },
     enabled: !!actor && !isFetching,
+    placeholderData: mockEntries,
     refetchInterval: 8000,
   });
 }

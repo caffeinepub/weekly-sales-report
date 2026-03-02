@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -25,6 +26,7 @@ import { type UserPermissions, useRBAC } from "@/context/RBACContext";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { Lock, Shield, Users } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 function truncatePrincipal(principal: string): string {
@@ -41,9 +43,15 @@ function formatJoinDate(ts: number): string {
 }
 
 export default function Settings() {
-  const { isAdmin, getAllUsers, setUserPermissions, adminPrincipal } =
-    useRBAC();
+  const {
+    isAdmin,
+    getAllUsers,
+    setUserPermissions,
+    setUserDisplayName,
+    adminPrincipal,
+  } = useRBAC();
   const { identity } = useInternetIdentity();
+  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
 
   const currentPrincipal = identity?.getPrincipal().toString() ?? "";
   const currentIsAdmin = isAdmin(currentPrincipal);
@@ -86,6 +94,22 @@ export default function Settings() {
     toast.success(`Permissions updated for ${truncatePrincipal(principal)}`);
   }
 
+  function handleNameChange(principal: string, value: string) {
+    setEditingNames((prev) => ({ ...prev, [principal]: value }));
+  }
+
+  function handleNameSave(principal: string, user: { displayName?: string }) {
+    const draft = editingNames[principal];
+    if (draft === undefined) return; // not editing
+    const trimmed = draft.trim();
+    const original = user.displayName ?? "";
+    if (trimmed === original) return; // no change
+    setUserDisplayName(principal, trimmed);
+    toast.success(
+      trimmed ? `Display name set to "${trimmed}"` : "Display name cleared",
+    );
+  }
+
   return (
     <TooltipProvider>
       <motion.div
@@ -111,7 +135,7 @@ export default function Settings() {
                       {truncatePrincipal(adminPrincipal ?? "")}
                     </p>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-xs font-mono bg-popover border-border">
+                  <TooltipContent className="max-w-xs text-xs font-mono bg-popover text-popover-foreground border-border">
                     {adminPrincipal}
                   </TooltipContent>
                 </Tooltip>
@@ -158,7 +182,10 @@ export default function Settings() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/30 hover:bg-secondary/30">
-                      <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3 pl-5">
+                      <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3 pl-5 min-w-[160px]">
+                        Display Name
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3 min-w-[120px]">
                         Principal
                       </TableHead>
                       <TableHead className="text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3 whitespace-nowrap">
@@ -189,14 +216,38 @@ export default function Settings() {
                           key={user.principal}
                           className="hover:bg-accent/20 transition-colors"
                         >
-                          <TableCell className="py-3.5 pl-5">
+                          {/* Display Name (editable) */}
+                          <TableCell className="py-2.5 pl-5">
+                            <Input
+                              value={
+                                editingNames[user.principal] ??
+                                user.displayName ??
+                                ""
+                              }
+                              placeholder="Enter name…"
+                              onChange={(e) =>
+                                handleNameChange(user.principal, e.target.value)
+                              }
+                              onBlur={() =>
+                                handleNameSave(user.principal, user)
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  (e.target as HTMLInputElement).blur();
+                                }
+                              }}
+                              className="h-8 text-sm bg-input border-border min-w-[140px]"
+                            />
+                          </TableCell>
+                          {/* Principal (truncated with tooltip) */}
+                          <TableCell className="py-3.5">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm font-mono text-foreground cursor-help">
+                                <span className="text-xs font-mono text-muted-foreground cursor-help">
                                   {truncatePrincipal(user.principal)}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent className="max-w-xs text-xs font-mono bg-popover border-border break-all">
+                              <TooltipContent className="max-w-xs text-xs font-mono bg-popover text-popover-foreground border-border break-all">
                                 {user.principal}
                               </TooltipContent>
                             </Tooltip>

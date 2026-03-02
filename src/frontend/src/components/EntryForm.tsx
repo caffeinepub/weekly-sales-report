@@ -23,12 +23,16 @@ export const STATUS_MAP: Record<string, string[]> = {
     "Proposal Sent",
     "Proposal Reviewed",
     "Negotiation",
+    "Feasibility Check",
+    "Samples Shared",
+    "Awaiting Customer Feedback",
   ],
   Closed: [
     "Closed Won",
     "Closed Lost",
     "Closed – No Decision",
     "Nurture / Revisit",
+    "Awaiting Customer Response",
   ],
 };
 

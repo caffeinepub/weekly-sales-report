@@ -44,6 +44,9 @@ import { formatCurrency, formatDate } from "@/utils/format";
 import { mockEntries } from "@/utils/mockData";
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Download,
   ExternalLink,
   Pencil,
@@ -85,6 +88,11 @@ export default function Entries({
   const [leadSourceFilter, setLeadSourceFilter] = useState("All");
   const [editEntry, setEditEntry] = useState<SalesEntry | null>(null);
   const [deleteId, setDeleteId] = useState<bigint | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function toggleSort() {
+    setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+  }
 
   const isMock =
     entries.length > 0 &&
@@ -112,8 +120,14 @@ export default function Entries({
       );
     }
 
+    result = [...result].sort((a, b) => {
+      const da = new Date(a.receivedDate).getTime();
+      const db = new Date(b.receivedDate).getTime();
+      return sortDir === "desc" ? db - da : da - db;
+    });
+
     return result;
-  }, [entries, statusGroupFilter, leadSourceFilter, search]);
+  }, [entries, statusGroupFilter, leadSourceFilter, search, sortDir]);
 
   function handleExportCSV() {
     const headers = [
@@ -332,7 +346,25 @@ export default function Entries({
                       #
                     </th>
                     <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
-                      Received
+                      <button
+                        type="button"
+                        onClick={toggleSort}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                        title={
+                          sortDir === "desc"
+                            ? "Newest first — click to sort oldest first"
+                            : "Oldest first — click to sort newest first"
+                        }
+                      >
+                        Received
+                        {sortDir === "desc" ? (
+                          <ArrowDown className="w-3 h-3" />
+                        ) : sortDir === "asc" ? (
+                          <ArrowUp className="w-3 h-3" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 opacity-50" />
+                        )}
+                      </button>
                     </th>
                     <th className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                       Lead Source
@@ -411,7 +443,7 @@ export default function Entries({
                             </TooltipTrigger>
                             <TooltipContent
                               side="top"
-                              className="max-w-xs text-xs bg-popover border-border"
+                              className="max-w-xs text-xs bg-popover text-popover-foreground border-border"
                             >
                               {entry.notes}
                             </TooltipContent>
