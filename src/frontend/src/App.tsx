@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useRBAC } from "@/context/RBACContext";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useSeedEntries } from "@/hooks/useSeedEntries";
 import AddEntry from "@/pages/AddEntry";
 import Dashboard from "@/pages/Dashboard";
 import Entries from "@/pages/Entries";
@@ -32,6 +33,7 @@ export default function App() {
   const { identity, isInitializing, clear } = useInternetIdentity();
   const { registerUser, getMyPermissions, isAdmin } = useRBAC();
   const queryClient = useQueryClient();
+  useSeedEntries();
 
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

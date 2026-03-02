@@ -2,7 +2,6 @@ import { StatusGroupBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardStats } from "@/hooks/useQueries";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { mockEntries } from "@/utils/mockData";
 import {
   Activity,
   AlertCircle,
@@ -109,13 +108,6 @@ export default function Dashboard() {
   const inProgressCount = Number(stats.countByStatusGroup.inProgress);
   const closedCount = Number(stats.countByStatusGroup.closed);
 
-  const isMock =
-    totalEntries > 0 &&
-    stats.recentEntries.length > 0 &&
-    mockEntries.some(
-      (m) => String(m.id) === String(stats.recentEntries[0]?.id),
-    );
-
   const statusGroups = [
     {
       label: "New",
@@ -178,11 +170,6 @@ export default function Dashboard() {
             Live — auto-refreshes every 8s
           </span>
         </div>
-        {isMock && (
-          <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
-            Showing sample data
-          </span>
-        )}
       </div>
 
       {/* Summary stats row */}

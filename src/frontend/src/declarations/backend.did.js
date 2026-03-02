@@ -8,6 +8,16 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
+export const UserProfile = IDL.Record({
+  'name' : IDL.Text,
+  'email' : IDL.Text,
+  'department' : IDL.Text,
+});
 export const StatusGroupCounts = IDL.Record({
   'new' : IDL.Nat,
   'closed' : IDL.Nat,
@@ -57,6 +67,7 @@ export const DashboardStats = IDL.Record({
 });
 
 export const idlService = IDL.Service({
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addEntry' : IDL.Func(
       [
         IDL.Text,
@@ -74,7 +85,10 @@ export const idlService = IDL.Service({
       [IDL.Nat],
       [],
     ),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'deleteEntry' : IDL.Func([IDL.Nat], [], []),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
   'getEntries' : IDL.Func([], [IDL.Vec(SalesEntry)], ['query']),
   'getEntriesByLeadSource' : IDL.Func(
@@ -88,6 +102,12 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getEntry' : IDL.Func([IDL.Nat], [SalesEntry], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'updateEntry' : IDL.Func(
       [
         IDL.Nat,
@@ -111,6 +131,16 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
+  const UserProfile = IDL.Record({
+    'name' : IDL.Text,
+    'email' : IDL.Text,
+    'department' : IDL.Text,
+  });
   const StatusGroupCounts = IDL.Record({
     'new' : IDL.Nat,
     'closed' : IDL.Nat,
@@ -160,6 +190,7 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addEntry' : IDL.Func(
         [
           IDL.Text,
@@ -177,7 +208,10 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'deleteEntry' : IDL.Func([IDL.Nat], [], []),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getDashboardStats' : IDL.Func([], [DashboardStats], ['query']),
     'getEntries' : IDL.Func([], [IDL.Vec(SalesEntry)], ['query']),
     'getEntriesByLeadSource' : IDL.Func(
@@ -191,6 +225,12 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getEntry' : IDL.Func([IDL.Nat], [SalesEntry], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'updateEntry' : IDL.Func(
         [
           IDL.Nat,

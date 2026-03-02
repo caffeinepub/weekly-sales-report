@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { DashboardStats, SalesEntry } from "../backend.d";
-import { computeMockDashboardStats, mockEntries } from "../utils/mockData";
 import { useActor } from "./useActor";
 
 export function useDashboardStats() {
@@ -9,14 +8,9 @@ export function useDashboardStats() {
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       if (!actor) throw new Error("No actor");
-      const result = await actor.getDashboardStats();
-      if (result.totalEntries === 0n) {
-        return computeMockDashboardStats();
-      }
-      return result;
+      return actor.getDashboardStats();
     },
     enabled: !!actor && !isFetching,
-    placeholderData: computeMockDashboardStats(),
     refetchInterval: 8000,
   });
 }
@@ -26,15 +20,10 @@ export function useEntries() {
   return useQuery<SalesEntry[]>({
     queryKey: ["entries"],
     queryFn: async () => {
-      if (!actor) return mockEntries;
-      const result = await actor.getEntries();
-      if (result.length === 0) {
-        return mockEntries;
-      }
-      return result;
+      if (!actor) throw new Error("No actor");
+      return actor.getEntries();
     },
     enabled: !!actor && !isFetching,
-    placeholderData: mockEntries,
     refetchInterval: 8000,
   });
 }

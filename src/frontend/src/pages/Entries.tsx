@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useDeleteEntry, useEntries, useUpdateEntry } from "@/hooks/useQueries";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { mockEntries } from "@/utils/mockData";
 import {
   AlertCircle,
   ArrowDown,
@@ -93,10 +92,6 @@ export default function Entries({
   function toggleSort() {
     setSortDir((d) => (d === "desc" ? "asc" : "desc"));
   }
-
-  const isMock =
-    entries.length > 0 &&
-    mockEntries.some((m) => String(m.id) === String(entries[0]?.id));
 
   const filtered = useMemo(() => {
     let result = entries;
@@ -302,11 +297,6 @@ export default function Entries({
               {entries.length !== filtered.length &&
                 ` of ${entries.length} total`}
             </p>
-            {isMock && (
-              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
-                Sample data
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-ring" />

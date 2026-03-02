@@ -1,20 +1,48 @@
 import Map "mo:core/Map";
 import Array "mo:core/Array";
-import Int "mo:core/Int";
-import Nat "mo:core/Nat";
 import Text "mo:core/Text";
 import Float "mo:core/Float";
 import Time "mo:core/Time";
+import Int "mo:core/Int";
+import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
-
-
+import MixinAuthorization "authorization/MixinAuthorization";
+import Principal "mo:core/Principal";
+import AccessControl "authorization/access-control";
 
 actor {
-  type SalesEntry = {
+  // Initialize access control
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
+  public type UserProfile = {
+    name : Text;
+    email : Text;
+    department : Text;
+  };
+
+  let userProfiles = Map.empty<Principal, UserProfile>();
+  var entries = Map.empty<Nat, SalesEntry>();
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public type SalesEntry = {
     id : Nat;
-    receivedDate : Text;
+    receivedDate : Text; // yyyy-mm-dd
     leadSource : Text;
     accountName : Text;
     potential : Text;
@@ -71,7 +99,6 @@ actor {
     };
   };
 
-  var entries = Map.empty<Nat, SalesEntry>();
   var nextId = 1;
 
   public shared ({ caller }) func addEntry(
@@ -87,6 +114,9 @@ actor {
     tcv : Float,
     closingDate : Text,
   ) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add entries");
+    };
     let id = nextId;
     let entry : SalesEntry = {
       id;
@@ -109,10 +139,16 @@ actor {
   };
 
   public query ({ caller }) func getEntries() : async [SalesEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view entries");
+    };
     entries.values().toArray().sort(SalesEntry.compareByReceivedDateDesc);
   };
 
   public query ({ caller }) func getEntry(id : Nat) : async SalesEntry {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view entries");
+    };
     switch (entries.get(id)) {
       case (null) { Runtime.trap("Entry not found") };
       case (?entry) { entry };
@@ -133,6 +169,9 @@ actor {
     tcv : Float,
     closingDate : Text,
   ) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update entries");
+    };
     switch (entries.get(id)) {
       case (null) { Runtime.trap("Entry not found") };
       case (?existing) {
@@ -157,6 +196,9 @@ actor {
   };
 
   public shared ({ caller }) func deleteEntry(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete entries");
+    };
     if (not entries.containsKey(id)) {
       Runtime.trap("Entry not found");
     };
@@ -164,18 +206,33 @@ actor {
   };
 
   public query ({ caller }) func getEntriesByStatusGroup(statusGroup : Text) : async [SalesEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view entries");
+    };
     entries.values().toArray().filter(
       func(entry) { entry.statusGroup == statusGroup }
     );
   };
 
   public query ({ caller }) func getEntriesByLeadSource(leadSource : Text) : async [SalesEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view entries");
+    };
     entries.values().toArray().filter(
       func(entry) { entry.leadSource == leadSource }
     );
   };
 
   public query ({ caller }) func getDashboardStats() : async DashboardStats {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view dashboard stats");
+    };
+
+    let nowNanos = Time.now();
+    let daysSinceEpoch = nowNanos / 1_000_000_000 / 86400;
+    let daysSinceEpochNat = daysSinceEpoch.toNat();
+    let currentDate = dateFromDays(daysSinceEpochNat);
+
     var totalTCV = 0.0;
     var newTCV = 0.0;
     var inProgressTCV = 0.0;
@@ -214,12 +271,24 @@ actor {
 
     let sortedEntries = entries.values().toArray().sort(SalesEntry.compareByReceivedDateDesc);
 
-    let recentEntries = sortedEntries.sliceToArray(0, Nat.min(5, sortedEntries.size()));
+    let recentEntries = sortedEntries.sliceToArray(
+      0,
+      Nat.min(5, sortedEntries.size()),
+    );
 
-    let now = Time.now();
-    let thirtyDaysNanos = 30 * 24 * 60 * 60 * 1_000_000_000;
-
-    let upcomingClosings = entries.values().toArray().filter(func(e) { e.createdAt >= (now - thirtyDaysNanos : Int) });
+    let upcomingClosings = entries.values().toArray().filter(
+      func(entry) {
+        entry.closingDate != "" and
+        entry.tcv > 0.0 and
+        entry.closingDate >= currentDate and
+        entry.closingDate <= addDaysToDate(currentDate, 30) and (
+          entry.status == "Negotiation" or
+          entry.status == "Proposal Sent" or
+          entry.status == "Proposal Reviewed" or
+          entry.status == "Awaiting Customer Response"
+        )
+      }
+    );
 
     {
       totalEntries = entries.size();
@@ -241,5 +310,29 @@ actor {
       recentEntries;
       upcomingClosings;
     };
+  };
+
+  func dateFromDays(days : Nat) : Text {
+    let year = 1970 + (days / 365);
+    let dayOfYear = days % 365;
+    let month = (dayOfYear / 30) + 1;
+    let day = (dayOfYear % 30) + 1;
+    year.toText() # "-" #
+    formatTwoDigits(month) # "-" #
+    formatTwoDigits(day);
+  };
+
+  func addDaysToDate(date : Text, days : Nat) : Text {
+    let year = 1970 + (days / 365);
+    let dayOfYear = days % 365;
+    let month = (dayOfYear / 30) + 1;
+    let day = (dayOfYear % 30) + 1;
+    year.toText() # "-" #
+    formatTwoDigits(month) # "-" #
+    formatTwoDigits(day);
+  };
+
+  func formatTwoDigits(n : Nat) : Text {
+    if (n < 10) { "0" # n.toText() } else { n.toText() };
   };
 };

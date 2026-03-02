@@ -57,7 +57,16 @@ export interface StatusGroupTCV {
   'closed' : number,
   'inProgress' : number,
 }
+export interface UserProfile {
+  'name' : string,
+  'email' : string,
+  'department' : string,
+}
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
 export interface _SERVICE {
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addEntry' : ActorMethod<
     [
       string,
@@ -74,12 +83,17 @@ export interface _SERVICE {
     ],
     bigint
   >,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'deleteEntry' : ActorMethod<[bigint], undefined>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getDashboardStats' : ActorMethod<[], DashboardStats>,
   'getEntries' : ActorMethod<[], Array<SalesEntry>>,
   'getEntriesByLeadSource' : ActorMethod<[string], Array<SalesEntry>>,
   'getEntriesByStatusGroup' : ActorMethod<[string], Array<SalesEntry>>,
   'getEntry' : ActorMethod<[bigint], SalesEntry>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
   'updateEntry' : ActorMethod<
     [
       bigint,
