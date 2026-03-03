@@ -1,11 +1,12 @@
 import { StatusGroupBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDashboardStats } from "@/hooks/useQueries";
+import { useDashboardStats, useEntries } from "@/hooks/useQueries";
 import { formatCurrency, formatDate } from "@/utils/format";
 import {
   Activity,
   AlertCircle,
   Briefcase,
+  CalendarRange,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -14,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { type Variants, motion } from "motion/react";
+import { useState } from "react";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -90,6 +92,10 @@ function LoadingSkeleton() {
 
 export default function Dashboard() {
   const { data: stats, isLoading, isError } = useDashboardStats();
+  const { data: entries } = useEntries();
+
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -102,58 +108,164 @@ export default function Dashboard() {
     );
   }
 
-  const totalTCVFormatted = formatCurrency(stats.totalTCV);
-  const totalEntries = Number(stats.totalEntries);
-  const newCount = Number(stats.countByStatusGroup.new);
-  const inProgressCount = Number(stats.countByStatusGroup.inProgress);
-  const closedCount = Number(stats.countByStatusGroup.closed);
+  // Filter entries by date range (received date) for pipeline metrics
+  const filteredEntries = (entries ?? []).filter((e) => {
+    if (!fromDate && !toDate) return true;
+    const received = e.receivedDate; // YYYY-MM-DD string
+    if (fromDate && received < fromDate) return false;
+    if (toDate && received > toDate) return false;
+    return true;
+  });
+
+  const hasDateFilter = fromDate || toDate;
+
+  // Compute upcoming closings entirely on the frontend to avoid backend date arithmetic bugs
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thirtyDaysFromNow = new Date(today);
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+  const upcomingClosings = (entries ?? [])
+    .filter((e) => {
+      if (!e.closingDate || e.tcv <= 0) return false;
+      const closing = new Date(e.closingDate);
+      const qualifyingStatuses = [
+        "Negotiation",
+        "Proposal Sent",
+        "Proposal Reviewed",
+        "Awaiting Customer Response",
+      ];
+      return (
+        closing >= today &&
+        closing <= thirtyDaysFromNow &&
+        qualifyingStatuses.includes(e.status)
+      );
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.closingDate).getTime() - new Date(b.closingDate).getTime(),
+    );
+
+  // Compute metrics from filtered entries when date filter is active
+  const computedTotalTCV = hasDateFilter
+    ? filteredEntries.reduce((s, e) => s + e.tcv, 0)
+    : stats.totalTCV;
+  const computedTotalEntries = hasDateFilter
+    ? filteredEntries.length
+    : Number(stats.totalEntries);
+  const computedNewCount = hasDateFilter
+    ? filteredEntries.filter((e) => e.statusGroup === "New").length
+    : Number(stats.countByStatusGroup.new);
+  const computedInProgressCount = hasDateFilter
+    ? filteredEntries.filter((e) => e.statusGroup === "In Progress").length
+    : Number(stats.countByStatusGroup.inProgress);
+  const computedClosedCount = hasDateFilter
+    ? filteredEntries.filter((e) => e.statusGroup === "Closed").length
+    : Number(stats.countByStatusGroup.closed);
+
+  const computedNewTCV = hasDateFilter
+    ? filteredEntries
+        .filter((e) => e.statusGroup === "New")
+        .reduce((s, e) => s + e.tcv, 0)
+    : stats.tcvByStatusGroup.new;
+  const computedInProgressTCV = hasDateFilter
+    ? filteredEntries
+        .filter((e) => e.statusGroup === "In Progress")
+        .reduce((s, e) => s + e.tcv, 0)
+    : stats.tcvByStatusGroup.inProgress;
+  const computedClosedTCV = hasDateFilter
+    ? filteredEntries
+        .filter((e) => e.statusGroup === "Closed")
+        .reduce((s, e) => s + e.tcv, 0)
+    : stats.tcvByStatusGroup.closed;
+
+  const closedWonTCV = filteredEntries
+    .filter((e) => e.statusGroup === "Closed" && e.status === "Closed Won")
+    .reduce((sum, e) => sum + e.tcv, 0);
+
+  const closedOtherTCV = computedClosedTCV - closedWonTCV;
+
+  // Lead source metrics
+  const computedLeadSources = [
+    {
+      label: "Sales Lead",
+      count: hasDateFilter
+        ? filteredEntries.filter((e) => e.leadSource === "Sales Lead").length
+        : Number(stats.countByLeadSource.salesLead),
+      tcv: hasDateFilter
+        ? filteredEntries
+            .filter((e) => e.leadSource === "Sales Lead")
+            .reduce((s, e) => s + e.tcv, 0)
+        : stats.tcvByLeadSource.salesLead,
+    },
+    {
+      label: "Marketing Lead",
+      count: hasDateFilter
+        ? filteredEntries.filter((e) => e.leadSource === "Marketing Lead")
+            .length
+        : Number(stats.countByLeadSource.marketingLead),
+      tcv: hasDateFilter
+        ? filteredEntries
+            .filter((e) => e.leadSource === "Marketing Lead")
+            .reduce((s, e) => s + e.tcv, 0)
+        : stats.tcvByLeadSource.marketingLead,
+    },
+    {
+      label: "Account Mining",
+      count: hasDateFilter
+        ? filteredEntries.filter((e) => e.leadSource === "Account Mining")
+            .length
+        : Number(stats.countByLeadSource.accountMining),
+      tcv: hasDateFilter
+        ? filteredEntries
+            .filter((e) => e.leadSource === "Account Mining")
+            .reduce((s, e) => s + e.tcv, 0)
+        : stats.tcvByLeadSource.accountMining,
+    },
+    {
+      label: "Referral",
+      count: hasDateFilter
+        ? filteredEntries.filter((e) => e.leadSource === "Referral").length
+        : Number(stats.countByLeadSource.referral),
+      tcv: hasDateFilter
+        ? filteredEntries
+            .filter((e) => e.leadSource === "Referral")
+            .reduce((s, e) => s + e.tcv, 0)
+        : stats.tcvByLeadSource.referral,
+    },
+  ];
+
+  const totalTCVFormatted = formatCurrency(computedTotalTCV);
+  const totalEntries = computedTotalEntries;
+  const newCount = computedNewCount;
+  const inProgressCount = computedInProgressCount;
+  const closedCount = computedClosedCount;
 
   const statusGroups = [
     {
       label: "New",
       count: newCount,
-      tcv: stats.tcvByStatusGroup.new,
+      tcv: computedNewTCV,
       badgeCls: "status-new",
       barColor: "oklch(0.52 0.16 250)",
     },
     {
       label: "In Progress",
       count: inProgressCount,
-      tcv: stats.tcvByStatusGroup.inProgress,
+      tcv: computedInProgressTCV,
       badgeCls: "status-inprogress",
       barColor: "oklch(0.64 0.16 68)",
     },
     {
       label: "Closed",
       count: closedCount,
-      tcv: stats.tcvByStatusGroup.closed,
+      tcv: computedClosedTCV,
       badgeCls: "status-closed-won",
       barColor: "oklch(0.52 0.14 155)",
     },
   ];
 
-  const leadSources = [
-    {
-      label: "Sales Lead",
-      count: Number(stats.countByLeadSource.salesLead),
-      tcv: stats.tcvByLeadSource.salesLead,
-    },
-    {
-      label: "Marketing Lead",
-      count: Number(stats.countByLeadSource.marketingLead),
-      tcv: stats.tcvByLeadSource.marketingLead,
-    },
-    {
-      label: "Account Mining",
-      count: Number(stats.countByLeadSource.accountMining),
-      tcv: stats.tcvByLeadSource.accountMining,
-    },
-    {
-      label: "Referral",
-      count: Number(stats.countByLeadSource.referral),
-      tcv: stats.tcvByLeadSource.referral,
-    },
-  ];
+  const leadSources = computedLeadSources;
 
   return (
     <motion.div
@@ -215,6 +327,51 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Pipeline Overview heading with date range filter */}
+      <motion.div variants={itemVariants}>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <CalendarRange className="w-4 h-4 text-primary" />
+            Pipeline Overview
+          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground font-medium">
+              From
+            </span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="text-xs border border-border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              data-ocid="dashboard.date_from_input"
+            />
+            <span className="text-xs text-muted-foreground font-medium">
+              To
+            </span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="text-xs border border-border rounded-md px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              data-ocid="dashboard.date_to_input"
+            />
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFromDate("");
+                  setToDate("");
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+                data-ocid="dashboard.date_clear_button"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
       {/* Pipeline by Status Group */}
       <motion.div variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -223,7 +380,72 @@ export default function Dashboard() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {statusGroups.map(({ label, count, tcv, badgeCls, barColor }) => {
-            const pct = stats.totalTCV > 0 ? (tcv / stats.totalTCV) * 100 : 0;
+            const pct =
+              computedTotalTCV > 0 ? (tcv / computedTotalTCV) * 100 : 0;
+
+            if (label === "Closed") {
+              const closedWonPct =
+                computedTotalTCV > 0
+                  ? (closedWonTCV / computedTotalTCV) * 100
+                  : 0;
+              return (
+                <div
+                  key={label}
+                  className={`rounded-xl p-5 border ${badgeCls} space-y-3`}
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between">
+                    <StatusGroupBadge statusGroup="Closed" size="sm" />
+                    <span className="text-xs font-medium opacity-70">
+                      {count} {count === 1 ? "entry" : "entries"}
+                    </span>
+                  </div>
+
+                  {/* Primary value — Closed Won TCV */}
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-display font-bold text-foreground leading-tight">
+                      {formatCurrency(closedWonTCV)}
+                    </p>
+                    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      Closed Won
+                    </p>
+                  </div>
+
+                  {/* Progress bar based on Closed Won % */}
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: barColor }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${closedWonPct}%` }}
+                      transition={{
+                        duration: 0.8,
+                        ease: "easeOut",
+                        delay: 0.3,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs opacity-60">
+                    {closedWonPct.toFixed(1)}% of total pipeline · Closed Won
+                  </p>
+
+                  {/* Divider + Other Closed in red */}
+                  <div className="border-t border-border/50 pt-2 mt-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <p className="text-base font-display font-semibold text-red-600">
+                        {formatCurrency(
+                          closedOtherTCV > 0 ? closedOtherTCV : 0,
+                        )}
+                      </p>
+                      <p className="text-[11px] text-red-500 font-medium">
+                        other closed
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={label}
@@ -264,7 +486,8 @@ export default function Dashboard() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {leadSources.map(({ label, count, tcv }) => {
-            const pct = stats.totalTCV > 0 ? (tcv / stats.totalTCV) * 100 : 0;
+            const pct =
+              computedTotalTCV > 0 ? (tcv / computedTotalTCV) * 100 : 0;
             return (
               <div
                 key={label}
@@ -300,7 +523,7 @@ export default function Dashboard() {
           Upcoming Closings (next 30 days)
         </h2>
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          {stats.upcomingClosings.length === 0 ? (
+          {upcomingClosings.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-sm">
               No closings in the next 30 days
             </div>
@@ -331,7 +554,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.upcomingClosings.map((entry) => (
+                  {upcomingClosings.map((entry) => (
                     <tr
                       key={String(entry.id)}
                       className="border-b border-border/50 hover:bg-accent/30 transition-colors"

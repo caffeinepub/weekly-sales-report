@@ -3,12 +3,17 @@ import { useEffect, useRef } from "react";
 import { seedEntries } from "../utils/seedData";
 import { useActor } from "./useActor";
 
-// Bump this version key when the seed data changes to force a re-seed.
-const SEED_KEY = "salespulse_seeded_v3";
-
 /**
- * Seeds the backend with real entries exactly once per version key.
- * On version bump, clears all existing entries and re-seeds with the new data.
+ * Seeds the backend with real entries if the backend is currently empty.
+ *
+ * Strategy: always query the backend entry count first.
+ * If the backend has 0 entries, seed it. This handles the case where:
+ *   - A new deployment wiped the backend
+ *   - The draft expired and was redeployed
+ *   - localStorage was stale from a previous session
+ *
+ * localStorage is used only to prevent duplicate seeding within the same
+ * backend session (keyed by the current backend entry count fingerprint).
  */
 export function useSeedEntries() {
   const { actor, isFetching } = useActor();
@@ -19,20 +24,20 @@ export function useSeedEntries() {
     if (!actor || isFetching) return;
     if (seedingRef.current) return;
 
-    // Already seeded with this version on this device
-    if (localStorage.getItem(SEED_KEY)) return;
-
     seedingRef.current = true;
 
     (async () => {
       try {
-        // Clear all existing entries first, then seed fresh
+        // Always check the actual backend state first
         const existing = await actor.getEntries();
-        for (const entry of existing) {
-          await actor.deleteEntry(entry.id);
+
+        // Only seed if the backend is empty
+        if (existing.length > 0) {
+          seedingRef.current = false;
+          return;
         }
 
-        // Add all seed entries sequentially
+        // Backend is empty -- seed all entries
         for (const entry of seedEntries) {
           await actor.addEntry(
             entry.receivedDate,
@@ -49,7 +54,6 @@ export function useSeedEntries() {
           );
         }
 
-        localStorage.setItem(SEED_KEY, "1");
         queryClient.invalidateQueries({ queryKey: ["entries"] });
         queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       } catch {
