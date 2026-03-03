@@ -33,12 +33,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDeleteEntry, useEntries, useUpdateEntry } from "@/hooks/useQueries";
 import { formatCurrency, formatDate } from "@/utils/format";
 import {
@@ -415,29 +410,17 @@ export default function Entries({
                         </span>
                       </td>
                       {/* Potential */}
-                      <td className="px-3 py-3 text-muted-foreground text-xs max-w-[140px]">
-                        <span className="truncate block">
+                      <td className="px-3 py-3 text-muted-foreground text-xs max-w-[160px]">
+                        <span className="break-words whitespace-normal">
                           {entry.potential}
                         </span>
                       </td>
-                      {/* Notes (truncated with tooltip) */}
-                      <td className="px-3 py-3 text-muted-foreground text-xs max-w-[160px]">
+                      {/* Notes (text-wrapped, no tooltip) */}
+                      <td className="px-3 py-3 text-muted-foreground text-xs max-w-[405px]">
                         {entry.notes ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate block cursor-help max-w-[160px]">
-                                {entry.notes.length > 40
-                                  ? `${entry.notes.slice(0, 40)}…`
-                                  : entry.notes}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="top"
-                              className="max-w-xs text-xs bg-popover text-popover-foreground border-border"
-                            >
-                              {entry.notes}
-                            </TooltipContent>
-                          </Tooltip>
+                          <span className="break-words whitespace-normal">
+                            {entry.notes}
+                          </span>
                         ) : (
                           <span className="opacity-40">—</span>
                         )}

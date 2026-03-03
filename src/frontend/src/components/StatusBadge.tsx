@@ -45,7 +45,7 @@ export function StatusBadge({
         {statusGroup}
       </span>
       {status && (
-        <span className="text-xs text-muted-foreground pl-1 leading-tight">
+        <span className="text-xs text-muted-foreground pl-1 leading-tight whitespace-nowrap">
           {status}
         </span>
       )}
