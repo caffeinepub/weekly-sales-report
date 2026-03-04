@@ -4,6 +4,7 @@ import {
   type EntryFormData,
 } from "@/components/EntryForm";
 import { useAddEntry } from "@/hooks/useQueries";
+import { notifyByEmail } from "@/utils/notifyEmail";
 import { CheckCircle2, PlusCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -30,6 +31,7 @@ export default function AddEntry() {
         closingDate: data.closingDate,
       });
       toast.success("Entry added to pipeline");
+      notifyByEmail("added", `${data.accountName} - ${data.potential}`);
       setSuccessKey((k) => k + 1);
       setFormKey((k) => k + 1);
     } catch {

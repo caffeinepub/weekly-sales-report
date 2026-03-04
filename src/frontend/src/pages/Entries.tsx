@@ -36,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDeleteEntry, useEntries, useUpdateEntry } from "@/hooks/useQueries";
 import { formatCurrency, formatDate } from "@/utils/format";
+import { notifyByEmail } from "@/utils/notifyEmail";
 import {
   AlertCircle,
   ArrowDown,
@@ -64,15 +65,9 @@ function LoadingSkeleton() {
   );
 }
 
-interface EntriesProps {
-  canEdit?: boolean;
-  canDelete?: boolean;
-}
-
-export default function Entries({
-  canEdit = true,
-  canDelete = true,
-}: EntriesProps) {
+export default function Entries() {
+  const canEdit = true;
+  const canDelete = true;
   const { data: entries = [], isLoading, isError } = useEntries();
   const deleteMutation = useDeleteEntry();
   const updateMutation = useUpdateEntry();
@@ -190,6 +185,10 @@ export default function Entries({
         closingDate: data.closingDate,
       });
       toast.success("Entry updated successfully");
+      notifyByEmail(
+        "updated",
+        `${editEntry.accountName} - ${editEntry.potential}`,
+      );
       setEditEntry(null);
     } catch {
       toast.error("Failed to update entry");
@@ -201,6 +200,7 @@ export default function Entries({
     try {
       await deleteMutation.mutateAsync(deleteId);
       toast.success("Entry deleted");
+      notifyByEmail("deleted", `Entry #${String(deleteId)}`);
       setDeleteId(null);
     } catch {
       toast.error("Failed to delete entry");

@@ -1,20 +1,36 @@
 # Weekly Sales Report
 
 ## Current State
-Full sales pipeline app with login, RBAC, dashboard, entries table, add/edit/delete, CSV export, and seed data. The backend computes `upcomingClosings` in `getDashboardStats`. The `addDaysToDate` function in the backend is broken -- it ignores its `date` argument and recalculates from the epoch, returning a wrong cutoff date, so the 30-day upcoming closings window never works correctly. Additionally, the save/update of entries works at the frontend/hook level but the broken date logic means edits to status (e.g. Cipla changed to Closed / Awaiting Customer Response) don't show up in Upcoming Closings even when the save succeeds.
+Full-featured sales pipeline tracker with:
+- Internet Identity login gate (all users must authenticate)
+- RBAC/Settings page (admin manages per-user read/write/add/delete permissions)
+- Add Entry, All Entries, and Dashboard pages
+- Edit and delete actions in All Entries, all entries seeded on first load
+- Auto-refresh every 8 seconds
+- Export CSV button in All Entries
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new to add.
+- Email notification trigger: after any successful add, update, or delete action, show a toast notification AND open a mailto link to lakshminarayanap@mobiusservices.com with a pre-filled subject/body describing the change. This is the "notify by email" mechanism since backend email sending is unavailable.
 
 ### Modify
-- Fix `addDaysToDate` in the backend so it correctly adds N days to a given YYYY-MM-DD date string and returns a valid YYYY-MM-DD string. The function must parse the input date, convert to a day count, add the days, then convert back -- not recalculate from 1970.
+- Remove login requirement: the app should load directly without requiring Internet Identity authentication. All users with the link can access the app. The `useActor` hook already supports anonymous actors, so just remove the `if (!identity)` guard in App.tsx.
+- Remove the Settings screen: remove the Settings nav item, Settings page import, and Settings tab from the app entirely.
+- Remove RBAC permission checks: since there is no login, treat everyone as having full permissions (canEdit=true, canDelete=true, canAdd=true). Remove the admin badge, user avatar, sign-out button, and any conditional rendering based on permissions.
+- Remove the login/logout UI from the header entirely.
+- The `useSeedEntries` hook should still work since it uses the anonymous actor.
 
 ### Remove
-- Nothing to remove.
+- Login page display (the `if (!identity) return <Login />` block)
+- Settings tab and page
+- All RBAC/permission-gating logic from nav and content rendering
+- User avatar and admin badge from the header
+- Sign out button
 
 ## Implementation Plan
-1. Regenerate backend Motoko with a correct `addDaysToDate` implementation that parses the input date string, converts to a total day count, adds N days, and formats the result back as YYYY-MM-DD.
-2. Keep all other backend logic (addEntry, updateEntry, deleteEntry, getDashboardStats, RBAC) identical.
-3. No frontend changes needed -- the fix is purely in the backend date arithmetic.
+1. Update App.tsx: remove login gate, remove Settings tab, remove permission-based nav filtering, remove user avatar/admin badge/sign-out button, simplify renderContent to always show all tabs, treat everyone with full access.
+2. Update Entries.tsx: always pass canEdit=true and canDelete=true; after handleUpdate and handleDelete succeed, trigger the email notification.
+3. Update AddEntry.tsx: after handleSubmit succeeds, trigger the email notification.
+4. Create a shared utility `src/utils/notifyEmail.ts` that builds and opens a mailto link to lakshminarayanap@mobiusservices.com with change details.
+5. Ensure main.tsx still wraps with RBACProvider (it's needed by the context but won't be user-visible) or remove the RBAC dependency entirely since login is gone.
