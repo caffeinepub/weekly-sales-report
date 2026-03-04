@@ -8,9 +8,10 @@ import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
+
 import MixinAuthorization "authorization/MixinAuthorization";
-import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
+
 
 actor {
   // Initialize access control
@@ -19,8 +20,6 @@ actor {
 
   public type UserProfile = {
     name : Text;
-    email : Text;
-    department : Text;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -114,8 +113,8 @@ actor {
     tcv : Float,
     closingDate : Text,
   ) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can add entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can add entries");
     };
     let id = nextId;
     let entry : SalesEntry = {
@@ -139,15 +138,15 @@ actor {
   };
 
   public query ({ caller }) func getEntries() : async [SalesEntry] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can view entries");
     };
     entries.values().toArray().sort(SalesEntry.compareByReceivedDateDesc);
   };
 
   public query ({ caller }) func getEntry(id : Nat) : async SalesEntry {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can view entries");
     };
     switch (entries.get(id)) {
       case (null) { Runtime.trap("Entry not found") };
@@ -169,8 +168,8 @@ actor {
     tcv : Float,
     closingDate : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can update entries");
     };
     switch (entries.get(id)) {
       case (null) { Runtime.trap("Entry not found") };
@@ -196,8 +195,8 @@ actor {
   };
 
   public shared ({ caller }) func deleteEntry(id : Nat) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can delete entries");
     };
     if (not entries.containsKey(id)) {
       Runtime.trap("Entry not found");
@@ -206,8 +205,8 @@ actor {
   };
 
   public query ({ caller }) func getEntriesByStatusGroup(statusGroup : Text) : async [SalesEntry] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can view entries");
     };
     entries.values().toArray().filter(
       func(entry) { entry.statusGroup == statusGroup }
@@ -215,8 +214,8 @@ actor {
   };
 
   public query ({ caller }) func getEntriesByLeadSource(leadSource : Text) : async [SalesEntry] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view entries");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can view entries");
     };
     entries.values().toArray().filter(
       func(entry) { entry.leadSource == leadSource }
@@ -224,8 +223,8 @@ actor {
   };
 
   public query ({ caller }) func getDashboardStats() : async DashboardStats {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view dashboard stats");
+    if (not (AccessControl.hasPermission(accessControlState, caller, #guest))) {
+      Runtime.trap("Unauthorized: Only guests can view dashboard stats");
     };
 
     let nowNanos = Time.now();
@@ -276,19 +275,7 @@ actor {
       Nat.min(5, sortedEntries.size()),
     );
 
-    let upcomingClosings = entries.values().toArray().filter(
-      func(entry) {
-        entry.closingDate != "" and
-        entry.tcv > 0.0 and
-        entry.closingDate >= currentDate and
-        entry.closingDate <= addDaysToDate(currentDate, 30) and (
-          entry.status == "Negotiation" or
-          entry.status == "Proposal Sent" or
-          entry.status == "Proposal Reviewed" or
-          entry.status == "Awaiting Customer Response"
-        )
-      }
-    );
+    let upcomingClosings : [SalesEntry] = [];
 
     {
       totalEntries = entries.size();

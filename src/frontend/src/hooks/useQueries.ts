@@ -12,6 +12,8 @@ export function useDashboardStats() {
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 8000,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -25,6 +27,8 @@ export function useEntries() {
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 8000,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 

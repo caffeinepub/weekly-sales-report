@@ -50,8 +50,6 @@ export interface DashboardStats {
 }
 export interface UserProfile {
     name: string;
-    email: string;
-    department: string;
 }
 export interface LeadSourceCounts {
     marketingLead: bigint;

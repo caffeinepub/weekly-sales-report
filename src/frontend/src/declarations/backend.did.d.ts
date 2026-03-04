@@ -57,11 +57,7 @@ export interface StatusGroupTCV {
   'closed' : number,
   'inProgress' : number,
 }
-export interface UserProfile {
-  'name' : string,
-  'email' : string,
-  'department' : string,
-}
+export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };

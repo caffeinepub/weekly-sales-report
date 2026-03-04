@@ -91,19 +91,55 @@ function LoadingSkeleton() {
 }
 
 export default function Dashboard() {
-  const { data: stats, isLoading, isError } = useDashboardStats();
+  const {
+    data: stats,
+    isLoading,
+    isError,
+    isFetching: isStatsFetching,
+    refetch,
+    failureCount,
+  } = useDashboardStats();
   const { data: entries } = useEntries();
 
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  if (isLoading) return <LoadingSkeleton />;
+  // Show skeleton while loading or while retrying (up to 3 attempts give user skeleton feedback)
+  if (isLoading || (isStatsFetching && !stats)) return <LoadingSkeleton />;
 
+  // After retries exhausted and still no data, show actionable error
   if (isError || !stats) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-        <AlertCircle className="w-10 h-10 opacity-40" />
-        <p className="text-sm">Failed to load dashboard. Retrying…</p>
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <AlertCircle className="w-10 h-10 text-muted-foreground opacity-40" />
+        <div className="text-center">
+          <p className="text-sm font-medium text-foreground mb-1">
+            Unable to load dashboard
+          </p>
+          <p className="text-xs text-muted-foreground max-w-xs">
+            {failureCount > 0
+              ? `Tried ${failureCount} time${failureCount > 1 ? "s" : ""}. The data will reload automatically.`
+              : "The data will reload automatically."}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/90 transition-colors"
+            data-ocid="dashboard.retry_button"
+          >
+            Retry now
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-secondary text-secondary-foreground text-sm rounded-lg hover:bg-secondary/80 transition-colors"
+            data-ocid="dashboard.reload_button"
+          >
+            Reload page
+          </button>
+        </div>
       </div>
     );
   }
@@ -184,6 +220,25 @@ export default function Dashboard() {
     .reduce((sum, e) => sum + e.tcv, 0);
 
   const closedOtherTCV = computedClosedTCV - closedWonTCV;
+
+  // In Progress split — computed independently (an entry can appear in both)
+  const threeMonthsAgo = new Date(today);
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const threeMonthsAgoStr = threeMonthsAgo.toISOString().split("T")[0]; // YYYY-MM-DD
+
+  const inProgressEntries = filteredEntries.filter(
+    (e) => e.statusGroup === "In Progress",
+  );
+
+  // Part 1: TCV < $500,000
+  const inProgressPart1TCV = inProgressEntries
+    .filter((e) => e.tcv < 500000)
+    .reduce((sum, e) => sum + e.tcv, 0);
+
+  // Part 2: TCV >= $500,000 OR older than 3 months
+  const inProgressPart2TCV = inProgressEntries
+    .filter((e) => e.tcv >= 500000 || e.receivedDate < threeMonthsAgoStr)
+    .reduce((sum, e) => sum + e.tcv, 0);
 
   // Lead source metrics
   const computedLeadSources = [
@@ -382,6 +437,63 @@ export default function Dashboard() {
           {statusGroups.map(({ label, count, tcv, badgeCls, barColor }) => {
             const pct =
               computedTotalTCV > 0 ? (tcv / computedTotalTCV) * 100 : 0;
+
+            if (label === "In Progress") {
+              const inProgressPart1Pct =
+                computedTotalTCV > 0
+                  ? (inProgressPart1TCV / computedTotalTCV) * 100
+                  : 0;
+              return (
+                <div
+                  key={label}
+                  className={`rounded-xl p-5 border ${badgeCls} space-y-3`}
+                >
+                  {/* Header row */}
+                  <div className="flex items-center justify-between">
+                    <StatusGroupBadge statusGroup="In Progress" size="sm" />
+                    <span className="text-xs font-medium opacity-70">
+                      {count} {count === 1 ? "entry" : "entries"}
+                    </span>
+                  </div>
+
+                  {/* Primary value — Part 1 TCV */}
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-2xl font-display font-bold text-foreground leading-tight">
+                      {formatCurrency(inProgressPart1TCV)}
+                    </p>
+                  </div>
+
+                  {/* Progress bar based on Part 1 % */}
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: barColor }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${inProgressPart1Pct}%` }}
+                      transition={{
+                        duration: 0.8,
+                        ease: "easeOut",
+                        delay: 0.3,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs opacity-60">
+                    {inProgressPart1Pct.toFixed(1)}% of total pipeline
+                  </p>
+
+                  {/* Divider + Part 2 in red */}
+                  <div className="border-t border-border/50 pt-2 mt-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <p className="text-base font-display font-semibold text-red-600">
+                        {formatCurrency(
+                          inProgressPart2TCV > 0 ? inProgressPart2TCV : 0,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             if (label === "Closed") {
               const closedWonPct =

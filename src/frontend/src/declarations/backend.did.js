@@ -13,11 +13,7 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const UserProfile = IDL.Record({
-  'name' : IDL.Text,
-  'email' : IDL.Text,
-  'department' : IDL.Text,
-});
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const StatusGroupCounts = IDL.Record({
   'new' : IDL.Nat,
   'closed' : IDL.Nat,
@@ -136,11 +132,7 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const UserProfile = IDL.Record({
-    'name' : IDL.Text,
-    'email' : IDL.Text,
-    'department' : IDL.Text,
-  });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const StatusGroupCounts = IDL.Record({
     'new' : IDL.Nat,
     'closed' : IDL.Nat,
