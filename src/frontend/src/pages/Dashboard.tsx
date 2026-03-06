@@ -489,6 +489,9 @@ export default function Dashboard() {
                           inProgressPart2TCV > 0 ? inProgressPart2TCV : 0,
                         )}
                       </p>
+                      <p className="text-[11px] text-red-500 font-medium">
+                        stale
+                      </p>
                     </div>
                   </div>
                 </div>

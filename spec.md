@@ -1,36 +1,38 @@
 # Weekly Sales Report
 
 ## Current State
-Full-featured sales pipeline tracker with:
-- Internet Identity login gate (all users must authenticate)
-- RBAC/Settings page (admin manages per-user read/write/add/delete permissions)
-- Add Entry, All Entries, and Dashboard pages
-- Edit and delete actions in All Entries, all entries seeded on first load
-- Auto-refresh every 8 seconds
-- Export CSV button in All Entries
+
+The app has four screens: Dashboard, All Entries, Add Entry, and Settings (removed). Navigation is in App.tsx with a Tab type covering "dashboard" | "entries" | "add". Each SalesEntry has one `notes` field and one `createdAt` timestamp. The backend provides `getEntries()` returning all SalesEntry records. Entries.tsx has CSV export logic. There is no Notes History screen.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Email notification trigger: after any successful add, update, or delete action, show a toast notification AND open a mailto link to lakshminarayanap@mobiusservices.com with a pre-filled subject/body describing the change. This is the "notify by email" mechanism since backend email sending is unavailable.
+- A new "Notes History" screen placed next to "Add Entry" in the nav
+- The screen displays one row per entry that has a non-empty notes field, sorted chronologically (oldest first) by receivedDate, then by createdAt
+- Each row shows: Received (no wrap), Lead Source (no wrap), Account (no wrap), Potential (text wrap), Notes (text wrap), Notes Date (no wrap -- uses createdAt formatted as date), Status (no wrap), Sales Person, TCV, Closing (no wrap)
+- "Export to Excel" button that downloads all rows as an .xlsx file (using SheetJS/xlsx library or a CSV with .xlsx-compatible tab-separated values -- use xlsx npm package if available, otherwise CSV)
+- The screen title is "Notes History"
 
 ### Modify
-- Remove login requirement: the app should load directly without requiring Internet Identity authentication. All users with the link can access the app. The `useActor` hook already supports anonymous actors, so just remove the `if (!identity)` guard in App.tsx.
-- Remove the Settings screen: remove the Settings nav item, Settings page import, and Settings tab from the app entirely.
-- Remove RBAC permission checks: since there is no login, treat everyone as having full permissions (canEdit=true, canDelete=true, canAdd=true). Remove the admin badge, user avatar, sign-out button, and any conditional rendering based on permissions.
-- Remove the login/logout UI from the header entirely.
-- The `useSeedEntries` hook should still work since it uses the anonymous actor.
+- App.tsx: add "notes" tab to the Tab type, navItems array, pageTitles, and renderContent()
 
 ### Remove
-- Login page display (the `if (!identity) return <Login />` block)
-- Settings tab and page
-- All RBAC/permission-gating logic from nav and content rendering
-- User avatar and admin badge from the header
-- Sign out button
+- Nothing removed
 
 ## Implementation Plan
-1. Update App.tsx: remove login gate, remove Settings tab, remove permission-based nav filtering, remove user avatar/admin badge/sign-out button, simplify renderContent to always show all tabs, treat everyone with full access.
-2. Update Entries.tsx: always pass canEdit=true and canDelete=true; after handleUpdate and handleDelete succeed, trigger the email notification.
-3. Update AddEntry.tsx: after handleSubmit succeeds, trigger the email notification.
-4. Create a shared utility `src/utils/notifyEmail.ts` that builds and opens a mailto link to lakshminarayanap@mobiusservices.com with change details.
-5. Ensure main.tsx still wraps with RBACProvider (it's needed by the context but won't be user-visible) or remove the RBAC dependency entirely since login is gone.
+
+1. Write spec.md (this file)
+2. Create `src/pages/NotesHistory.tsx`:
+   - Import useEntries hook
+   - Filter entries to those with non-empty notes
+   - Sort by receivedDate ascending, then createdAt ascending
+   - Render table with 10 columns as specified
+   - Each row is sequentially numbered (Line 1, Line 2, ...)
+   - Export to Excel button: use SheetJS xlsx library (check if available; if not, generate CSV with .xlsx extension workaround using a proper mime type, or install xlsx)
+   - Loading and error states
+3. Update App.tsx:
+   - Add "notes" to Tab type
+   - Add FileText icon from lucide-react for the nav item
+   - Add nav item { id: "notes", label: "Notes History", shortLabel: "Notes", icon: FileText }
+   - Add to pageTitles: notes: "Notes History"
+   - Add to renderContent: if activeTab === "notes" return <NotesHistory />

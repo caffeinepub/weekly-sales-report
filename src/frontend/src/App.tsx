@@ -3,7 +3,9 @@ import { useSeedEntries } from "@/hooks/useSeedEntries";
 import AddEntry from "@/pages/AddEntry";
 import Dashboard from "@/pages/Dashboard";
 import Entries from "@/pages/Entries";
+import NotesHistory from "@/pages/NotesHistory";
 import {
+  FileText,
   LayoutDashboard,
   Menu,
   PlusCircle,
@@ -14,7 +16,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
-type Tab = "dashboard" | "entries" | "add";
+type Tab = "dashboard" | "entries" | "add" | "notes";
 
 const navItems: {
   id: Tab;
@@ -40,12 +42,19 @@ const navItems: {
     shortLabel: "Add",
     icon: PlusCircle,
   },
+  {
+    id: "notes",
+    label: "Notes History",
+    shortLabel: "Notes",
+    icon: FileText,
+  },
 ];
 
 const pageTitles: Record<Tab, string> = {
   dashboard: "Pipeline Overview",
   entries: "Sales Entries",
   add: "Add New Entry",
+  notes: "Notes History",
 };
 
 export default function App() {
@@ -61,6 +70,7 @@ export default function App() {
     if (activeTab === "dashboard") return <Dashboard />;
     if (activeTab === "entries") return <Entries />;
     if (activeTab === "add") return <AddEntry />;
+    if (activeTab === "notes") return <NotesHistory />;
     return null;
   }
 
